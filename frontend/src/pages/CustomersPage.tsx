@@ -4,6 +4,7 @@ import { UserOutlined, EyeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { commonApi } from '../api/common';
 import { Customer, WarningLevelColors, WarningLevelTexts } from '../types';
+import { formatPercent, formatLocaleNumber } from '../utils/format';
 
 const CustomersPage: React.FC = () => {
   const navigate = useNavigate();
@@ -82,24 +83,24 @@ const CustomersPage: React.FC = () => {
       title: '担保品价值',
       dataIndex: 'total_collateral_value',
       key: 'total_collateral_value',
-      render: (val?: number) => (val !== undefined ? `¥${val.toLocaleString()}` : '-'),
+      render: (val?: number | null) => (val != null ? `¥${formatLocaleNumber(val)}` : '-'),
     },
     {
       title: '负债总额',
       dataIndex: 'total_debt',
       key: 'total_debt',
-      render: (val?: number) => (val !== undefined ? `¥${val.toLocaleString()}` : '-'),
+      render: (val?: number | null) => (val != null ? `¥${formatLocaleNumber(val)}` : '-'),
     },
     {
       title: '维持担保比例',
       dataIndex: 'maintenance_ratio',
       key: 'maintenance_ratio',
-      render: (val?: number) => {
-        if (val === undefined) return '-';
+      render: (val?: number | null) => {
+        if (val == null) return '-';
         const level = getRiskLevel(val);
         return (
           <Space>
-            <span style={{ fontWeight: 600 }}>{val.toFixed(2)}%</span>
+            <span style={{ fontWeight: 600 }}>{formatPercent(val)}</span>
             {level && (
               <Tag color={WarningLevelColors[level as keyof typeof WarningLevelColors]}>
                 {WarningLevelTexts[level as keyof typeof WarningLevelTexts]}

@@ -1,5 +1,6 @@
 import { api } from './client';
-import { Customer, User, Security, AuditLog, DashboardStats } from '../types';
+import type { AxiosRequestConfig } from 'axios';
+import { Customer, User, Security, AuditLog, DashboardStats, RiskHistory } from '../types';
 
 export const commonApi = {
   getCustomers: (params?: {
@@ -12,8 +13,8 @@ export const commonApi = {
   getCustomer: (customerId: string) =>
     api.get<Customer>(`/common/customers/${customerId}`),
 
-  getUsers: (params?: { role?: string }) =>
-    api.get<User[]>('/common/users', { params }),
+  getUsers: (params?: { role?: string }, config?: AxiosRequestConfig) =>
+    api.get<User[]>('/common/users', { params, ...config }),
 
   getSecurities: (params?: { is_suspended?: boolean }) =>
     api.get<Security[]>('/common/securities', { params }),
@@ -29,6 +30,15 @@ export const commonApi = {
 
   getDashboardStats: () =>
     api.get<DashboardStats>('/common/statistics/dashboard'),
+
+  getRiskHistory: (params?: {
+    customer_id?: string;
+    start_date?: string;
+    end_date?: string;
+  }) =>
+    api.get<{ history: RiskHistory[]; customers: Customer[] }>('/common/risk-history', {
+      params,
+    }),
 
   healthCheck: () => api.get('/health'),
 };

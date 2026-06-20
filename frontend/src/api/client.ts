@@ -4,6 +4,12 @@ import { ApiResponse } from '../types';
 
 const baseURL = '/api';
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    skipErrorMessage?: boolean;
+  }
+}
+
 const instance: AxiosInstance = axios.create({
   baseURL,
   timeout: 30000,
@@ -16,8 +22,19 @@ instance.interceptors.request.use(
   (config) => {
     const currentUser = localStorage.getItem('currentUser');
     if (currentUser) {
-      const user = JSON.parse(currentUser);
-      config.headers['x-user-id'] = user.user_id;
+      try {
+        const user = JSON.parse(currentUser);
+        if (user?.user_id) {
+          config.headers['x-user-id'] = user.user_id;
+        }
+      } catch (e) {
+        // ignore parse error
+      }
+    }
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers['x-token'] = token;
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
   },
@@ -32,14 +49,25 @@ instance.interceptors.response.use(
     if (data.success) {
       return data.data;
     } else {
-      message.error(data.error || '请求失败');
-      return Promise.reject(new Error(data.error || '请求失败'));
+      const errorMsg = data.error || '请求失败';
+      if (!response.config?.skipErrorMessage) {
+        message.error(errorMsg);
+      }
+      const err = new Error(errorMsg);
+      (err as any).status = response.status;
+      return Promise.reject(err);
     }
   },
   (error) => {
-    const errorMessage = error.response?.data?.error || error.message || '网络错误';
-    message.error(errorMessage);
-    return Promise.reject(error);
+    const serverError = error.response?.data?.error;
+    const errorMessage = serverError || error.message || '网络错误';
+    if (!error.config?.skipErrorMessage) {
+      message.error(errorMessage);
+    }
+    const customError = new Error(errorMessage);
+    (customError as any).status = error.response?.status;
+    (customError as any).response = error.response;
+    return Promise.reject(customError);
   }
 );
 

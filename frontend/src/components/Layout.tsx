@@ -11,6 +11,7 @@ import {
   LogoutOutlined,
   SwitcherOutlined,
   TeamOutlined,
+  LineChartOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/appStore';
@@ -55,6 +56,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         icon: <PlusSquareOutlined />,
         label: '担保品追加',
         onClick: () => navigate('/additions'),
+      },
+      {
+        key: '/risk-curve',
+        icon: <LineChartOutlined />,
+        label: '风险变化曲线',
+        onClick: () => navigate('/risk-curve'),
       },
       {
         key: '/communications',

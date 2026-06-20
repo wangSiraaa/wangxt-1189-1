@@ -38,6 +38,7 @@ import {
   AdditionStatusTexts,
 } from '../types';
 import dayjs from 'dayjs';
+import { formatPercent, formatNumber, formatMoney, formatLocaleNumber } from '../utils/format';
 
 const LiquidationDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -138,31 +139,31 @@ const LiquidationDetailPage: React.FC = () => {
       title: '可处置比例',
       dataIndex: 'disposable_ratio',
       key: 'disposable_ratio',
-      render: (val: number) => `${(val * 100).toFixed(0)}%`,
+      render: (val: number) => formatPercent(val * 100, 0),
     },
     {
       title: '当前价格',
       dataIndex: 'current_price',
       key: 'current_price',
-      render: (val: number) => `¥${val.toFixed(2)}`,
+      render: (val: number) => formatMoney(val),
     },
     {
       title: '原持仓数量',
       dataIndex: 'original_quantity',
       key: 'original_quantity',
-      render: (val: number) => val.toFixed(4),
+      render: (val: number) => formatNumber(val),
     },
     {
       title: '拟强平数量',
       dataIndex: 'quantity_to_liquidate',
       key: 'quantity_to_liquidate',
-      render: (val: number) => val.toFixed(4),
+      render: (val: number) => formatNumber(val),
     },
     {
       title: '预计强平金额',
       dataIndex: 'estimated_amount',
       key: 'estimated_amount',
-      render: (val: number) => `¥${val.toLocaleString()}`,
+      render: (val: number) => `¥${formatLocaleNumber(val)}`,
     },
   ];
 
@@ -177,7 +178,7 @@ const LiquidationDetailPage: React.FC = () => {
       title: '金额',
       dataIndex: 'amount',
       key: 'amount',
-      render: (val: number) => `¥${val.toLocaleString()}`,
+      render: (val: number) => `¥${formatLocaleNumber(val)}`,
     },
     {
       title: '状态',
@@ -307,7 +308,7 @@ const LiquidationDetailPage: React.FC = () => {
               </Descriptions.Item>
               <Descriptions.Item label="触发时维持担保比例">
                 <span style={{ fontWeight: 600, color: '#f5222d' }}>
-                  {liquidation.trigger_maintenance_ratio.toFixed(2)}%
+                  {formatPercent(liquidation.trigger_maintenance_ratio)}
                 </span>
               </Descriptions.Item>
               <Descriptions.Item label="触发时间">
@@ -333,7 +334,7 @@ const LiquidationDetailPage: React.FC = () => {
               </Descriptions.Item>
               <Descriptions.Item label="实际强平金额">
                 {liquidation.total_liquidated_amount
-                  ? `¥${liquidation.total_liquidated_amount.toLocaleString()}`
+                  ? `¥${formatLocaleNumber(liquidation.total_liquidated_amount)}`
                   : '-'}
               </Descriptions.Item>
               <Descriptions.Item label="撤销原因">

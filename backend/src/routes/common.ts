@@ -217,4 +217,53 @@ router.get('/statistics/dashboard', async (req, res) => {
   }
 });
 
+router.get('/risk-history', async (req, res) => {
+  try {
+    const { customer_id, start_date, end_date } = req.query;
+
+    const params: any[] = [];
+    const conditions: string[] = [];
+
+    if (customer_id) {
+      conditions.push(`rh.customer_id = $${params.length + 1}`);
+      params.push(customer_id);
+    }
+    if (start_date) {
+      conditions.push(`rh.calculated_at >= $${params.length + 1}`);
+      params.push(start_date);
+    }
+    if (end_date) {
+      conditions.push(`rh.calculated_at <= $${params.length + 1}`);
+      params.push(end_date);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const historyResult = await query(
+      `SELECT rh.*, c.customer_name
+       FROM risk_history rh
+       LEFT JOIN customers c ON rh.customer_id = c.customer_id
+       ${whereClause}
+       ORDER BY rh.calculated_at ASC`,
+      params
+    );
+
+    const customersResult = await query(`
+      SELECT customer_id, customer_name, account_number
+      FROM customers
+      ORDER BY customer_name
+    `);
+
+    res.json({
+      success: true,
+      data: {
+        history: historyResult.rows,
+        customers: customersResult.rows,
+      },
+    });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

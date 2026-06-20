@@ -12,6 +12,7 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { RiskHistory, WarningLevel } from '../types';
+import { formatPercent } from '../utils/format';
 
 ChartJS.register(
   CategoryScale,
@@ -137,7 +138,7 @@ const RiskCurveChart: React.FC<RiskCurveChartProps> = ({
               danger: '警戒',
               liquidation: '平仓',
             }[level || 'normal'];
-            return [`${context.dataset.label}: ${value.toFixed(2)}%`, `风险等级: ${levelText}`];
+            return [`${context.dataset.label}: ${formatPercent(value)}`, `风险等级: ${levelText}`];
           },
         },
       },

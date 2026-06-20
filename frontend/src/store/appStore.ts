@@ -23,6 +23,7 @@ export const useAppStore = create<AppState>((set) => ({
   setCurrentRole: (role) => set({ currentRole: role }),
   logout: () => {
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('auth_token');
     set({ currentUser: null, currentRole: null });
   },
 }));

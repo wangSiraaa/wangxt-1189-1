@@ -10,6 +10,7 @@ import {
   AdditionStatusTexts,
   AdditionTypeTexts,
 } from '../types';
+import { formatMoney, formatRatio, formatLocaleNumber } from '../utils/format';
 
 const CollateralAdditionsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -122,7 +123,7 @@ const CollateralAdditionsPage: React.FC = () => {
       title: '金额',
       dataIndex: 'amount',
       key: 'amount',
-      render: (val: number) => `¥${val.toLocaleString()}`,
+      render: (val: number | null) => (val != null ? `¥${formatLocaleNumber(val)}` : '-'),
     },
     {
       title: '证券',
@@ -135,7 +136,7 @@ const CollateralAdditionsPage: React.FC = () => {
       title: '数量',
       dataIndex: 'quantity',
       key: 'quantity',
-      render: (val?: number) => (val !== undefined ? val.toFixed(4) : '-'),
+      render: (val?: number | null) => (val != null ? formatRatio(val, 4) : '-'),
     },
     {
       title: '状态',

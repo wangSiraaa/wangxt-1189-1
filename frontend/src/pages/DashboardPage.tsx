@@ -12,6 +12,7 @@ import { commonApi } from '../api/common';
 import { riskApi } from '../api/risk';
 import { DashboardStats, RiskWarning, WarningLevelColors, WarningLevelTexts, WarningStatusTexts } from '../types';
 import RiskCurveChart from '../components/RiskCurveChart';
+import { formatPercent, formatLocaleNumber } from '../utils/format';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -71,7 +72,7 @@ const DashboardPage: React.FC = () => {
       title: '维持比例',
       dataIndex: 'maintenance_ratio',
       key: 'maintenance_ratio',
-      render: (val: number) => `${val.toFixed(2)}%`,
+      render: (val: number) => formatPercent(val),
     },
     {
       title: '风险等级',
@@ -164,7 +165,7 @@ const DashboardPage: React.FC = () => {
             <div style={{ marginTop: 8, color: '#666' }}>
               待确认: {stats?.additions.pending || 0}
               {' | '}
-              已确认金额: ¥{(stats?.additions.total_confirmed_amount || 0).toLocaleString()}
+              已确认金额: ¥{formatLocaleNumber(stats?.additions.total_confirmed_amount)}
             </div>
           </Card>
         </Col>

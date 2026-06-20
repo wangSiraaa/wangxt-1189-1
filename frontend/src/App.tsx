@@ -13,6 +13,7 @@ import LiquidationDetailPage from './pages/LiquidationDetailPage';
 import CollateralAdditionsPage from './pages/CollateralAdditionsPage';
 import CommunicationsPage from './pages/CommunicationsPage';
 import AuditLogsPage from './pages/AuditLogsPage';
+import RiskCurvePage from './pages/RiskCurvePage';
 import { useAppStore } from './store/appStore';
 
 const { Content } = Layout;
@@ -51,6 +52,7 @@ const App: React.FC = () => {
           <Route path="/liquidations" element={<LiquidationsPage />} />
           <Route path="/liquidations/:id" element={<LiquidationDetailPage />} />
           <Route path="/additions" element={<CollateralAdditionsPage />} />
+          <Route path="/risk-curve" element={<RiskCurvePage />} />
           <Route path="/communications" element={<CommunicationsPage />} />
           <Route path="/audit-logs" element={<AuditLogsPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

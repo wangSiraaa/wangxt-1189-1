@@ -33,6 +33,7 @@ import {
   CommunicationTypeTexts,
 } from '../types';
 import RiskCurveChart from '../components/RiskCurveChart';
+import { formatPercent, formatNumber, formatMoney, formatLocaleNumber } from '../utils/format';
 
 const CustomerDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -117,31 +118,31 @@ const CustomerDetailPage: React.FC = () => {
       title: '可处置比例',
       dataIndex: 'disposable_ratio',
       key: 'disposable_ratio',
-      render: (val: number) => `${(val * 100).toFixed(0)}%`,
+      render: (val: number) => formatPercent(val * 100, 0),
     },
     {
       title: '当前价格',
       dataIndex: 'current_price',
       key: 'current_price',
-      render: (val: number) => `¥${val.toFixed(2)}`,
+      render: (val: number) => formatMoney(val),
     },
     {
       title: '持仓数量',
       dataIndex: 'quantity',
       key: 'quantity',
-      render: (val: number) => val.toFixed(4),
+      render: (val: number) => formatNumber(val),
     },
     {
       title: '市值',
       dataIndex: 'market_value',
       key: 'market_value',
-      render: (val: number) => `¥${val.toLocaleString()}`,
+      render: (val: number) => `¥${formatLocaleNumber(val)}`,
     },
     {
       title: '可处置价值',
       dataIndex: 'disposable_value',
       key: 'disposable_value',
-      render: (val: number) => `¥${val.toLocaleString()}`,
+      render: (val: number) => `¥${formatLocaleNumber(val)}`,
     },
   ];
 
@@ -160,7 +161,7 @@ const CustomerDetailPage: React.FC = () => {
       title: '维持比例',
       dataIndex: 'maintenance_ratio',
       key: 'maintenance_ratio',
-      render: (val: number) => `${val.toFixed(2)}%`,
+      render: (val: number) => formatPercent(val),
     },
     {
       title: '状态',
@@ -228,7 +229,7 @@ const CustomerDetailPage: React.FC = () => {
       title: '金额',
       dataIndex: 'amount',
       key: 'amount',
-      render: (val: number) => `¥${val.toLocaleString()}`,
+      render: (val: number) => `¥${formatLocaleNumber(val)}`,
     },
     {
       title: '证券',
@@ -239,7 +240,7 @@ const CustomerDetailPage: React.FC = () => {
       title: '数量',
       dataIndex: 'quantity',
       key: 'quantity',
-      render: (val?: number) => val?.toFixed(4),
+      render: (val?: number | null) => (val != null ? formatNumber(val) : '-'),
     },
     {
       title: '状态',
@@ -265,7 +266,7 @@ const CustomerDetailPage: React.FC = () => {
       title: '触发比例',
       dataIndex: 'trigger_maintenance_ratio',
       key: 'trigger_maintenance_ratio',
-      render: (val: number) => `${val.toFixed(2)}%`,
+      render: (val: number) => formatPercent(val),
     },
     {
       title: '状态',
@@ -277,7 +278,7 @@ const CustomerDetailPage: React.FC = () => {
       title: '强平金额',
       dataIndex: 'total_liquidated_amount',
       key: 'total_liquidated_amount',
-      render: (val?: number) => (val ? `¥${val.toLocaleString()}` : '-'),
+      render: (val?: number) => (val ? `¥${formatLocaleNumber(val)}` : '-'),
     },
     {
       title: '创建时间',

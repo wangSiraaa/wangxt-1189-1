@@ -11,6 +11,7 @@ import {
   WarningLevelColors,
   WarningLevelTexts,
 } from '../types';
+import { formatPercent, formatLocaleNumber } from '../utils/format';
 
 const LiquidationsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -92,7 +93,7 @@ const LiquidationsPage: React.FC = () => {
       title: '触发时维持比例',
       dataIndex: 'trigger_maintenance_ratio',
       key: 'trigger_maintenance_ratio',
-      render: (val: number) => `${val.toFixed(2)}%`,
+      render: (val: number) => formatPercent(val),
     },
     {
       title: '风险等级',
@@ -127,7 +128,7 @@ const LiquidationsPage: React.FC = () => {
       title: '强平金额',
       dataIndex: 'total_liquidated_amount',
       key: 'total_liquidated_amount',
-      render: (val?: number) => (val ? `¥${val.toLocaleString()}` : '-'),
+      render: (val?: number) => (val ? `¥${formatLocaleNumber(val)}` : '-'),
     },
     {
       title: '操作',

@@ -47,6 +47,7 @@ import {
   WarningStatus,
 } from '../types';
 import RiskCurveChart from '../components/RiskCurveChart';
+import { formatPercent, formatNumber, formatMoney, formatLocaleNumber } from '../utils/format';
 
 const WarningDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -206,7 +207,7 @@ const WarningDetailPage: React.FC = () => {
         time: new Date(warning.triggered_at).toLocaleString('zh-CN'),
         color: 'red',
         icon: <WarningOutlined />,
-        children: `预警生成 - ${WarningLevelTexts[warning.warning_level]} - 维持比例: ${warning.maintenance_ratio.toFixed(2)}%`,
+        children: `预警生成 - ${WarningLevelTexts[warning.warning_level]} - 维持比例: ${formatPercent(warning.maintenance_ratio)}`,
       });
     }
 
@@ -224,7 +225,7 @@ const WarningDetailPage: React.FC = () => {
         time: new Date(add.created_at).toLocaleString('zh-CN'),
         color: 'green',
         icon: <PlusSquareOutlined />,
-        children: `担保品追加 - ${add.addition_type === 'cash' ? '现金' : '证券'} ¥${add.amount.toLocaleString()} - ${AdditionStatusTexts[add.status]}`,
+        children: `担保品追加 - ${add.addition_type === 'cash' ? '现金' : '证券'} ¥${formatLocaleNumber(add.amount)} - ${AdditionStatusTexts[add.status]}`,
       });
     });
 
@@ -233,7 +234,7 @@ const WarningDetailPage: React.FC = () => {
         time: new Date(liq.created_at).toLocaleString('zh-CN'),
         color: 'orange',
         icon: <SwapOutlined />,
-        children: `强平指令 - ${LiquidationStatusTexts[liq.status]}${liq.total_liquidated_amount ? ` - ¥${liq.total_liquidated_amount.toLocaleString()}` : ''}`,
+        children: `强平指令 - ${LiquidationStatusTexts[liq.status]}${liq.total_liquidated_amount ? ` - ¥${formatLocaleNumber(liq.total_liquidated_amount)}` : ''}`,
       });
     });
 
@@ -261,31 +262,31 @@ const WarningDetailPage: React.FC = () => {
       title: '可处置比例',
       dataIndex: 'disposable_ratio',
       key: 'disposable_ratio',
-      render: (val: number) => `${(val * 100).toFixed(0)}%`,
+      render: (val: number) => formatPercent(val * 100, 0),
     },
     {
       title: '当前价格',
       dataIndex: 'current_price',
       key: 'current_price',
-      render: (val: number) => `¥${val.toFixed(2)}`,
+      render: (val: number) => formatMoney(val),
     },
     {
       title: '持仓数量',
       dataIndex: 'quantity',
       key: 'quantity',
-      render: (val: number) => val.toFixed(4),
+      render: (val: number) => formatNumber(val),
     },
     {
       title: '市值',
       dataIndex: 'market_value',
       key: 'market_value',
-      render: (val: number) => `¥${val.toLocaleString()}`,
+      render: (val: number) => `¥${formatLocaleNumber(val)}`,
     },
     {
       title: '可处置价值',
       dataIndex: 'disposable_value',
       key: 'disposable_value',
-      render: (val: number) => `¥${val.toLocaleString()}`,
+      render: (val: number) => `¥${formatLocaleNumber(val)}`,
     },
   ];
 
@@ -332,7 +333,7 @@ const WarningDetailPage: React.FC = () => {
       title: '金额',
       dataIndex: 'amount',
       key: 'amount',
-      render: (val: number) => `¥${val.toLocaleString()}`,
+      render: (val: number) => `¥${formatLocaleNumber(val)}`,
     },
     {
       title: '证券',
@@ -343,7 +344,7 @@ const WarningDetailPage: React.FC = () => {
       title: '数量',
       dataIndex: 'quantity',
       key: 'quantity',
-      render: (val: number) => val?.toFixed(4),
+      render: (val: number | null | undefined) => (val != null ? formatNumber(val) : '-'),
     },
     {
       title: '状态',
@@ -386,7 +387,7 @@ const WarningDetailPage: React.FC = () => {
       title: '触发比例',
       dataIndex: 'trigger_maintenance_ratio',
       key: 'trigger_maintenance_ratio',
-      render: (val: number) => `${val.toFixed(2)}%`,
+      render: (val: number) => formatPercent(val),
     },
     {
       title: '触发时间',
@@ -404,7 +405,7 @@ const WarningDetailPage: React.FC = () => {
       title: '强平金额',
       dataIndex: 'total_liquidated_amount',
       key: 'total_liquidated_amount',
-      render: (val: number) => (val ? `¥${val.toLocaleString()}` : '-'),
+      render: (val: number) => (val ? `¥${formatLocaleNumber(val)}` : '-'),
     },
     {
       title: '操作',
@@ -468,14 +469,14 @@ const WarningDetailPage: React.FC = () => {
               </Descriptions.Item>
               <Descriptions.Item label="维持担保比例">
                 <span style={{ fontWeight: 600, fontSize: 18 }}>
-                  {warning.maintenance_ratio.toFixed(2)}%
+                  {formatPercent(warning.maintenance_ratio)}
                 </span>
               </Descriptions.Item>
               <Descriptions.Item label="担保品总价值">
-                ¥{warning.total_collateral_value.toLocaleString()}
+                ¥{formatLocaleNumber(warning.total_collateral_value)}
               </Descriptions.Item>
               <Descriptions.Item label="负债总额">
-                ¥{warning.total_debt.toLocaleString()}
+                ¥{formatLocaleNumber(warning.total_debt)}
               </Descriptions.Item>
               <Descriptions.Item label="触发时间">
                 {new Date(warning.triggered_at).toLocaleString('zh-CN')}

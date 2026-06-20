@@ -1,7 +1,11 @@
-import { Pool } from 'pg';
+import { Pool, types } from 'pg';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+types.setTypeParser(20, (val) => (val === null ? null : parseInt(val, 10)));
+types.setTypeParser(1700, (val) => (val === null ? null : parseFloat(val)));
+types.setTypeParser(701, (val) => (val === null ? null : parseFloat(val)));
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',

@@ -6,6 +6,7 @@ import { riskApi } from '../api/risk';
 import { commonApi } from '../api/common';
 import { RiskWarning, WarningLevel, WarningStatus, WarningLevelColors, WarningLevelTexts, WarningStatusTexts, WarningType } from '../types';
 import dayjs from 'dayjs';
+import { formatPercent, formatLocaleNumber } from '../utils/format';
 
 const WarningsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -92,7 +93,7 @@ const WarningsPage: React.FC = () => {
       dataIndex: 'maintenance_ratio',
       key: 'maintenance_ratio',
       render: (val: number) => (
-        <span style={{ fontWeight: 600 }}>{val.toFixed(2)}%</span>
+        <span style={{ fontWeight: 600 }}>{formatPercent(val)}</span>
       ),
       sorter: (a: RiskWarning, b: RiskWarning) => a.maintenance_ratio - b.maintenance_ratio,
     },
@@ -100,13 +101,13 @@ const WarningsPage: React.FC = () => {
       title: '担保品价值',
       dataIndex: 'total_collateral_value',
       key: 'total_collateral_value',
-      render: (val: number) => `¥${val.toLocaleString()}`,
+      render: (val: number) => `¥${formatLocaleNumber(val)}`,
     },
     {
       title: '负债总额',
       dataIndex: 'total_debt',
       key: 'total_debt',
-      render: (val: number) => `¥${val.toLocaleString()}`,
+      render: (val: number) => `¥${formatLocaleNumber(val)}`,
     },
     {
       title: '风险等级',
