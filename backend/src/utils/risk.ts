@@ -35,6 +35,24 @@ export const calculateDisposableValue = (
   return positionValue;
 };
 
+export const calculateIntradayChange = (
+  currentPrice: number,
+  prevClosePrice: number
+): number => {
+  if (!prevClosePrice || prevClosePrice <= 0) return 0;
+  return Number((((currentPrice - prevClosePrice) / prevClosePrice) * 100).toFixed(4));
+};
+
+export const calculatePositionIntradayChange = (
+  currentMarketValue: number,
+  quantity: number,
+  prevClosePrice: number
+): number => {
+  if (!quantity || quantity <= 0 || !prevClosePrice || prevClosePrice <= 0) return 0;
+  const prevMarketValue = prevClosePrice * quantity;
+  return Number((((currentMarketValue - prevMarketValue) / prevMarketValue) * 100).toFixed(4));
+};
+
 export const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('zh-CN', {
     style: 'currency',

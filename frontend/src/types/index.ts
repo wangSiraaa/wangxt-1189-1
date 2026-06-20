@@ -40,6 +40,7 @@ export interface Security {
   suspension_start_date?: string;
   disposable_ratio: number;
   current_price: number;
+  prev_close_price: number;
   created_at: string;
   updated_at: string;
 }
@@ -53,9 +54,11 @@ export interface CollateralPosition {
   is_suspended: boolean;
   disposable_ratio: number;
   current_price: number;
+  prev_close_price?: number;
   quantity: number;
   market_value: number;
   disposable_value?: number;
+  intraday_change?: number;
   last_calculated_at: string;
   created_at: string;
   updated_at: string;
@@ -142,8 +145,9 @@ export interface ForcedLiquidation {
   trigger_maintenance_ratio: number;
   trigger_time: string;
   is_trigger_time_locked: boolean;
+  is_disposal_locked: boolean;
   status: LiquidationStatus;
-  positions_to_liquidate?: any[];
+  positions_to_liquidate?: PositionToLiquidate[];
   executed_by?: string;
   executor_name?: string;
   executed_at?: string;
@@ -158,6 +162,54 @@ export interface ForcedLiquidation {
   warning_level?: WarningLevel;
 }
 
+export interface PositionToLiquidate {
+  position_id: string;
+  security_id: string;
+  security_code: string;
+  security_name: string;
+  is_suspended: boolean;
+  current_price: number;
+  disposable_ratio: number;
+  original_quantity: number;
+  quantity_to_liquidate: number;
+  filled_quantity: number;
+  filled_amount: number;
+  cancelled: boolean;
+  estimated_amount: number;
+}
+
+export type ExecutionType = 'fill' | 'cancel';
+
+export interface LiquidationExecution {
+  execution_id: string;
+  liquidation_id: string;
+  execution_type: ExecutionType;
+  position_id?: string;
+  security_id?: string;
+  security_code?: string;
+  security_name?: string;
+  planned_quantity?: number;
+  quantity: number;
+  fill_price?: number;
+  fill_amount?: number;
+  executed_by?: string;
+  executor_name?: string;
+  executed_at: string;
+  cancellation_reason?: string;
+  notes?: string;
+  created_at: string;
+}
+
+export const ExecutionTypeTexts: Record<ExecutionType, string> = {
+  fill: '成交',
+  cancel: '撤单',
+};
+
+export const ExecutionTypeColors: Record<ExecutionType, string> = {
+  fill: 'blue',
+  cancel: 'orange',
+};
+
 export interface RiskHistory {
   history_id: string;
   customer_id: string;
@@ -165,6 +217,7 @@ export interface RiskHistory {
   total_collateral_value: number;
   total_debt: number;
   warning_level: WarningLevel;
+  intraday_change: number;
   calculated_at: string;
 }
 

@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS securities (
     suspension_start_date TIMESTAMP,
     disposable_ratio NUMERIC(10, 4) DEFAULT 1.0,
     current_price NUMERIC(18, 4) NOT NULL DEFAULT 0,
+    prev_close_price NUMERIC(18, 4) NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -115,6 +116,7 @@ CREATE TABLE IF NOT EXISTS forced_liquidations (
     trigger_maintenance_ratio NUMERIC(10, 4) NOT NULL,
     trigger_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_trigger_time_locked BOOLEAN DEFAULT false,
+    is_disposal_locked BOOLEAN DEFAULT false,
     status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled')),
     positions_to_liquidate JSONB,
     executed_by UUID REFERENCES users(user_id),
@@ -128,6 +130,25 @@ CREATE TABLE IF NOT EXISTS forced_liquidations (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS liquidation_executions (
+    execution_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    liquidation_id UUID REFERENCES forced_liquidations(liquidation_id) NOT NULL,
+    execution_type VARCHAR(20) NOT NULL CHECK (execution_type IN ('fill', 'cancel')),
+    position_id UUID,
+    security_id UUID REFERENCES securities(security_id),
+    security_code VARCHAR(20),
+    security_name VARCHAR(255),
+    planned_quantity NUMERIC(18, 4),
+    quantity NUMERIC(18, 4) NOT NULL,
+    fill_price NUMERIC(18, 4),
+    fill_amount NUMERIC(18, 4),
+    executed_by UUID REFERENCES users(user_id),
+    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    cancellation_reason TEXT,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS risk_history (
     history_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     customer_id UUID REFERENCES customers(customer_id) NOT NULL,
@@ -135,6 +156,7 @@ CREATE TABLE IF NOT EXISTS risk_history (
     total_collateral_value NUMERIC(18, 4) NOT NULL,
     total_debt NUMERIC(18, 4) NOT NULL,
     warning_level VARCHAR(20) NOT NULL,
+    intraday_change NUMERIC(10, 4) DEFAULT 0,
     calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -158,12 +180,48 @@ CREATE INDEX IF NOT EXISTS idx_collateral_additions_customer ON collateral_addit
 CREATE INDEX IF NOT EXISTS idx_collateral_additions_status ON collateral_additions(status);
 CREATE INDEX IF NOT EXISTS idx_forced_liquidations_customer ON forced_liquidations(customer_id);
 CREATE INDEX IF NOT EXISTS idx_forced_liquidations_status ON forced_liquidations(status);
+CREATE INDEX IF NOT EXISTS idx_liquidation_executions_liq ON liquidation_executions(liquidation_id);
 CREATE INDEX IF NOT EXISTS idx_risk_history_customer ON risk_history(customer_id);
 CREATE INDEX IF NOT EXISTS idx_risk_history_calculated_at ON risk_history(calculated_at);
 CREATE INDEX IF NOT EXISTS idx_collateral_positions_customer ON collateral_positions(customer_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 `;
+
+const MIGRATION_SQL = `
+ALTER TABLE securities ADD COLUMN IF NOT EXISTS prev_close_price NUMERIC(18, 4) NOT NULL DEFAULT 0;
+ALTER TABLE risk_history ADD COLUMN IF NOT EXISTS intraday_change NUMERIC(10, 4) DEFAULT 0;
+ALTER TABLE forced_liquidations ADD COLUMN IF NOT EXISTS is_disposal_locked BOOLEAN DEFAULT false;
+CREATE TABLE IF NOT EXISTS liquidation_executions (
+    execution_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    liquidation_id UUID REFERENCES forced_liquidations(liquidation_id) NOT NULL,
+    execution_type VARCHAR(20) NOT NULL CHECK (execution_type IN ('fill', 'cancel')),
+    position_id UUID,
+    security_id UUID REFERENCES securities(security_id),
+    security_code VARCHAR(20),
+    security_name VARCHAR(255),
+    planned_quantity NUMERIC(18, 4),
+    quantity NUMERIC(18, 4) NOT NULL,
+    fill_price NUMERIC(18, 4),
+    fill_amount NUMERIC(18, 4),
+    executed_by UUID REFERENCES users(user_id),
+    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    cancellation_reason TEXT,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_liquidation_executions_liq ON liquidation_executions(liquidation_id);
+`;
+
+export const runSchemaMigrations = async (): Promise<void> => {
+  try {
+    await query(MIGRATION_SQL);
+    console.log('[DB Migration] Schema migrations applied');
+  } catch (error) {
+    console.error('[DB Migration] Migration failed:', error);
+    throw error;
+  }
+};
 
 export const checkAndInitializeDatabase = async (): Promise<boolean> => {
   try {
@@ -178,11 +236,15 @@ export const checkAndInitializeDatabase = async (): Promise<boolean> => {
       console.log(
         `[DB Init] Found ${userCount.rows[0].count} users, ${customerCount.rows[0].count} customers`
       );
+
+      console.log('[DB Init] Running schema migrations for existing database...');
+      await runSchemaMigrations();
       return false;
     }
 
     console.log('[DB Init] Tables missing, starting full initialization...');
     await initializeDatabase();
+    await runSchemaMigrations();
     return true;
   } catch (error) {
     console.error('[DB Init] Check failed:', error);
@@ -249,12 +311,15 @@ const initializeDatabase = async () => {
   const securityId4 = uuidv4();
 
   await query(
-    `INSERT INTO securities (security_id, security_code, security_name, is_suspended, disposable_ratio, current_price) VALUES
-       ($1, '600519', '贵州茅台', false, 1.0, 1688.00),
-       ($2, '000001', '平安银行', false, 1.0, 11.25),
-       ($3, '300750', '宁德时代', true, 0.3, 188.50),
-       ($4, '601318', '中国平安', false, 1.0, 42.80)
-       ON CONFLICT (security_code) DO NOTHING`,
+    `INSERT INTO securities (security_id, security_code, security_name, is_suspended, disposable_ratio, current_price, prev_close_price) VALUES
+       ($1, '600519', '贵州茅台', false, 1.0, 1688.00, 1670.00),
+       ($2, '000001', '平安银行', false, 1.0, 11.25, 11.40),
+       ($3, '300750', '宁德时代', true, 0.3, 188.50, 192.00),
+       ($4, '601318', '中国平安', false, 1.0, 42.80, 43.10)
+       ON CONFLICT (security_code) DO UPDATE SET
+       current_price = EXCLUDED.current_price,
+       prev_close_price = EXCLUDED.prev_close_price,
+       updated_at = CURRENT_TIMESTAMP`,
     [securityId1, securityId2, securityId3, securityId4]
   );
   console.log('[DB Init] 4 securities created');
@@ -313,6 +378,10 @@ const initializeDatabase = async () => {
     const baseRatio2 = 95 + Math.sin(i * 0.2) * 20;
     const baseRatio3 = 140 + Math.sin(i * 0.25) * 10;
 
+    const change1 = Number((Math.cos(i * 0.3) * 1.8).toFixed(2));
+    const change2 = Number((Math.cos(i * 0.2) * 2.4).toFixed(2));
+    const change3 = Number((Math.cos(i * 0.25) * 1.5).toFixed(2));
+
     const getLevel = (ratio: number) => {
       if (ratio >= 180) return 'normal';
       if (ratio >= 150) return 'warning';
@@ -321,15 +390,15 @@ const initializeDatabase = async () => {
     };
 
     await query(
-      `INSERT INTO risk_history (history_id, customer_id, maintenance_ratio, total_collateral_value, total_debt, warning_level, calculated_at)
+      `INSERT INTO risk_history (history_id, customer_id, maintenance_ratio, total_collateral_value, total_debt, warning_level, intraday_change, calculated_at)
          VALUES
-         ($1, $2, $3, $4, $5, $6, $7),
-         ($8, $9, $10, $11, $12, $13, $14),
-         ($15, $16, $17, $18, $19, $20, $21)`,
+         ($1, $2, $3, $4, $5, $6, $7, $8),
+         ($9, $10, $11, $12, $13, $14, $15, $16),
+         ($17, $18, $19, $20, $21, $22, $23, $24)`,
       [
-        uuidv4(), customerId1, baseRatio1, 1688000 + i * 1000, 1000000, getLevel(baseRatio1), historyDate,
-        uuidv4(), customerId2, baseRatio2, 800000 + i * 500, 1000000, getLevel(baseRatio2), historyDate,
-        uuidv4(), customerId3, baseRatio3, 1350000 + i * 800, 1000000, getLevel(baseRatio3), historyDate,
+        uuidv4(), customerId1, baseRatio1, 1688000 + i * 1000, 1000000, getLevel(baseRatio1), change1, historyDate,
+        uuidv4(), customerId2, baseRatio2, 800000 + i * 500, 1000000, getLevel(baseRatio2), change2, historyDate,
+        uuidv4(), customerId3, baseRatio3, 1350000 + i * 800, 1000000, getLevel(baseRatio3), change3, historyDate,
       ]
     );
   }

@@ -1,5 +1,5 @@
 import { query, getClient } from '../database/db';
-import { calculateMaintenanceRatio, calculateWarningLevel, calculateDisposableValue } from '../utils/risk';
+import { calculateMaintenanceRatio, calculateWarningLevel, calculateDisposableValue, calculateIntradayChange, calculatePositionIntradayChange } from '../utils/risk';
 import { logAudit } from '../utils/audit';
 import { cacheSet, cacheGet } from '../utils/redis';
 import { RiskWarning, MarginAccount, CollateralPosition, Security, RiskHistory, WarningLevel, WarningType } from '../types';
@@ -19,7 +19,7 @@ export const calculateCustomerRisk = async (
     await client.query('BEGIN');
 
     const positionsResult = await client.query(
-      `SELECT cp.*, s.security_code, s.security_name, s.is_suspended, s.disposable_ratio, s.current_price
+      `SELECT cp.*, s.security_code, s.security_name, s.is_suspended, s.disposable_ratio, s.current_price, s.prev_close_price
        FROM collateral_positions cp
        JOIN securities s ON cp.security_id = s.security_id
        WHERE cp.customer_id = $1
@@ -33,6 +33,7 @@ export const calculateCustomerRisk = async (
       is_suspended: boolean;
       disposable_ratio: number;
       current_price: number;
+      prev_close_price: number;
     })[] = positionsResult.rows;
 
     const accountResult = await client.query(
@@ -49,17 +50,28 @@ export const calculateCustomerRisk = async (
 
     let totalCollateralValue = 0;
     let totalDisposableValue = 0;
+    let prevTotalCollateralValue = 0;
 
     for (const position of positions) {
       const marketValue = position.quantity * position.current_price;
+      const prevMarketValue = position.quantity * position.prev_close_price;
       const disposableValue = calculateDisposableValue(
         marketValue,
         position.is_suspended,
         position.disposable_ratio
       );
+      const positionIntradayChange = calculatePositionIntradayChange(
+        marketValue,
+        position.quantity,
+        position.prev_close_price
+      );
+
+      (position as any).disposable_value = Number(disposableValue.toFixed(2));
+      (position as any).intraday_change = positionIntradayChange;
 
       totalCollateralValue += marketValue;
       totalDisposableValue += disposableValue;
+      prevTotalCollateralValue += prevMarketValue;
 
       await client.query(
         `UPDATE collateral_positions
@@ -80,6 +92,12 @@ export const calculateCustomerRisk = async (
       marginAccount.liquidation_line
     );
 
+    const intradayChange = calculatePositionIntradayChange(
+      totalCollateralValue,
+      1,
+      prevTotalCollateralValue > 0 ? prevTotalCollateralValue : totalCollateralValue
+    );
+
     await client.query(
       `UPDATE margin_accounts
        SET total_collateral_value = $1, maintenance_ratio = $2,
@@ -90,9 +108,9 @@ export const calculateCustomerRisk = async (
 
     const historyId = uuidv4();
     await client.query(
-      `INSERT INTO risk_history (history_id, customer_id, maintenance_ratio, total_collateral_value, total_debt, warning_level)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [historyId, customerId, maintenanceRatio, totalCollateralValue, marginAccount.total_debt, warningLevel]
+      `INSERT INTO risk_history (history_id, customer_id, maintenance_ratio, total_collateral_value, total_debt, warning_level, intraday_change)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [historyId, customerId, maintenanceRatio, totalCollateralValue, marginAccount.total_debt, warningLevel, intradayChange]
     );
 
     await client.query('COMMIT');

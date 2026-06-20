@@ -46,7 +46,10 @@ const RiskCurveChart: React.FC<RiskCurveChartProps> = ({
 
   const labels = sortedHistory.map((h) => {
     const date = new Date(h.calculated_at);
-    return `${date.getMonth() + 1}/${date.getDate()}`;
+    const monthDay = `${date.getMonth() + 1}/${date.getDate()}`;
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${monthDay} ${hours}:${minutes}`;
   });
 
   const ratioData = sortedHistory.map((h) => h.maintenance_ratio);
@@ -131,14 +134,26 @@ const RiskCurveChart: React.FC<RiskCurveChartProps> = ({
           label: function (context: any) {
             const value = context.parsed.y;
             const dataIndex = context.dataIndex;
-            const level = sortedHistory[dataIndex]?.warning_level;
+            const item = sortedHistory[dataIndex];
+            const level = item?.warning_level;
             const levelText = {
               normal: '正常',
               warning: '预警',
               danger: '警戒',
               liquidation: '平仓',
             }[level || 'normal'];
-            return [`${context.dataset.label}: ${formatPercent(value)}`, `风险等级: ${levelText}`];
+            const lines = [`${context.dataset.label}: ${formatPercent(value)}`, `风险等级: ${levelText}`];
+            if (item && item.intraday_change != null && context.dataset.label === '维持担保比例') {
+              const change = item.intraday_change;
+              const prefix = change > 0 ? '+' : '';
+              const changeColor = change > 0 ? '涨' : change < 0 ? '跌' : '平';
+              lines.push(`盘中${changeColor}: ${prefix}${formatPercent(change)}`);
+              if (item.total_collateral_value != null && item.total_debt != null && item.total_debt > 0) {
+                lines.push(`担保品总值: ¥${item.total_collateral_value.toLocaleString()}`);
+                lines.push(`负债总额: ¥${item.total_debt.toLocaleString()}`);
+              }
+            }
+            return lines;
           },
         },
       },

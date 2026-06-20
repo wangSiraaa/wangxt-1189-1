@@ -8,6 +8,9 @@ import {
   getLiquidations,
   getLiquidationById,
   getLiquidatablePositions,
+  batchExecuteForcedLiquidation,
+  cancelLiquidationOrder,
+  getLiquidationExecutions,
 } from '../services/tradingOperationsService';
 
 const router = express.Router();
@@ -36,6 +39,19 @@ const cancelLiquidationSchema = Joi.object({
 
 const updateTriggerTimeSchema = Joi.object({
   new_trigger_time: Joi.string().isoDate().required(),
+});
+
+const batchExecuteSchema = Joi.object({
+  position_id: Joi.string().uuid().required(),
+  quantity: Joi.number().positive().required(),
+  fill_price: Joi.number().positive().allow(null),
+  notes: Joi.string().allow('', null),
+});
+
+const cancelOrderSchema = Joi.object({
+  position_id: Joi.string().uuid().required(),
+  cancellation_reason: Joi.string().required(),
+  notes: Joi.string().allow('', null),
 });
 
 router.get('/positions/:customerId', async (req, res) => {
@@ -185,6 +201,79 @@ router.put('/liquidations/:liquidationId/trigger-time', async (req, res) => {
       ipAddress
     );
     res.json({ success: true, data: liquidation });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/liquidations/:liquidationId/batch-execute', async (req, res) => {
+  try {
+    const { liquidationId } = req.params;
+    const { error, value } = batchExecuteSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ success: false, error: error.details[0].message });
+    }
+
+    const userId = req.headers['x-user-id'] as string;
+    const ipAddress = req.ip;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'User ID is required' });
+    }
+
+    const liquidation = await batchExecuteForcedLiquidation(
+      liquidationId,
+      userId,
+      {
+        position_id: value.position_id,
+        quantity: value.quantity,
+        fill_price: value.fill_price ?? undefined,
+        notes: value.notes ?? undefined,
+      },
+      ipAddress
+    );
+    res.json({ success: true, data: liquidation });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/liquidations/:liquidationId/cancel-order', async (req, res) => {
+  try {
+    const { liquidationId } = req.params;
+    const { error, value } = cancelOrderSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ success: false, error: error.details[0].message });
+    }
+
+    const userId = req.headers['x-user-id'] as string;
+    const ipAddress = req.ip;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'User ID is required' });
+    }
+
+    const liquidation = await cancelLiquidationOrder(
+      liquidationId,
+      userId,
+      {
+        position_id: value.position_id,
+        cancellation_reason: value.cancellation_reason,
+        notes: value.notes ?? undefined,
+      },
+      ipAddress
+    );
+    res.json({ success: true, data: liquidation });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/liquidations/:liquidationId/executions', async (req, res) => {
+  try {
+    const { liquidationId } = req.params;
+    const executions = await getLiquidationExecutions(liquidationId);
+    res.json({ success: true, data: executions });
   } catch (error: any) {
     res.status(400).json({ success: false, error: error.message });
   }

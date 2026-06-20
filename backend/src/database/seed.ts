@@ -48,12 +48,15 @@ const seedDatabase = async () => {
     const securityId4 = uuidv4();
 
     await query(
-      `INSERT INTO securities (security_id, security_code, security_name, is_suspended, disposable_ratio, current_price) VALUES
-       ($1, '600519', '贵州茅台', false, 1.0, 1688.00),
-       ($2, '000001', '平安银行', false, 1.0, 11.25),
-       ($3, '300750', '宁德时代', true, 0.3, 188.50),
-       ($4, '601318', '中国平安', false, 1.0, 42.80)
-       ON CONFLICT (security_code) DO NOTHING`,
+      `INSERT INTO securities (security_id, security_code, security_name, is_suspended, disposable_ratio, current_price, prev_close_price) VALUES
+       ($1, '600519', '贵州茅台', false, 1.0, 1688.00, 1670.00),
+       ($2, '000001', '平安银行', false, 1.0, 11.25, 11.40),
+       ($3, '300750', '宁德时代', true, 0.3, 188.50, 192.00),
+       ($4, '601318', '中国平安', false, 1.0, 42.80, 43.10)
+       ON CONFLICT (security_code) DO UPDATE SET
+       current_price = EXCLUDED.current_price,
+       prev_close_price = EXCLUDED.prev_close_price,
+       updated_at = CURRENT_TIMESTAMP`,
       [securityId1, securityId2, securityId3, securityId4]
     );
     console.log('Securities created');
@@ -109,6 +112,10 @@ const seedDatabase = async () => {
       const baseRatio2 = 95 + Math.sin(i * 0.2) * 20;
       const baseRatio3 = 140 + Math.sin(i * 0.25) * 10;
 
+      const change1 = Number((Math.cos(i * 0.3) * 1.8).toFixed(2));
+      const change2 = Number((Math.cos(i * 0.2) * 2.4).toFixed(2));
+      const change3 = Number((Math.cos(i * 0.25) * 1.5).toFixed(2));
+
       const getLevel = (ratio: number) => {
         if (ratio >= 180) return 'normal';
         if (ratio >= 150) return 'warning';
@@ -117,15 +124,15 @@ const seedDatabase = async () => {
       };
 
       await query(
-        `INSERT INTO risk_history (history_id, customer_id, maintenance_ratio, total_collateral_value, total_debt, warning_level, calculated_at)
+        `INSERT INTO risk_history (history_id, customer_id, maintenance_ratio, total_collateral_value, total_debt, warning_level, intraday_change, calculated_at)
          VALUES
-         ($1, $2, $3, $4, $5, $6, $7),
-         ($8, $9, $10, $11, $12, $13, $14),
-         ($15, $16, $17, $18, $19, $20, $21)`,
+         ($1, $2, $3, $4, $5, $6, $7, $8),
+         ($9, $10, $11, $12, $13, $14, $15, $16),
+         ($17, $18, $19, $20, $21, $22, $23, $24)`,
         [
-          uuidv4(), customerId1, baseRatio1, 1688000 + i * 1000, 1000000, getLevel(baseRatio1), historyDate,
-          uuidv4(), customerId2, baseRatio2, 800000 + i * 500, 1000000, getLevel(baseRatio2), historyDate,
-          uuidv4(), customerId3, baseRatio3, 1350000 + i * 800, 1000000, getLevel(baseRatio3), historyDate,
+          uuidv4(), customerId1, baseRatio1, 1688000 + i * 1000, 1000000, getLevel(baseRatio1), change1, historyDate,
+          uuidv4(), customerId2, baseRatio2, 800000 + i * 500, 1000000, getLevel(baseRatio2), change2, historyDate,
+          uuidv4(), customerId3, baseRatio3, 1350000 + i * 800, 1000000, getLevel(baseRatio3), change3, historyDate,
         ]
       );
     }

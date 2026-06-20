@@ -271,6 +271,23 @@ const WarningDetailPage: React.FC = () => {
       render: (val: number) => formatMoney(val),
     },
     {
+      title: '前收盘价',
+      dataIndex: 'prev_close_price',
+      key: 'prev_close_price',
+      render: (val: number) => formatMoney(val),
+    },
+    {
+      title: '盘中涨跌幅',
+      dataIndex: 'intraday_change',
+      key: 'intraday_change',
+      render: (val: number) => {
+        if (val == null) return '-';
+        const color = val > 0 ? '#f5222d' : val < 0 ? '#52c41a' : '#666';
+        const prefix = val > 0 ? '+' : '';
+        return <span style={{ color, fontWeight: 600 }}>{prefix}{formatPercent(val)}</span>;
+      },
+    },
+    {
       title: '持仓数量',
       dataIndex: 'quantity',
       key: 'quantity',
@@ -533,6 +550,69 @@ const WarningDetailPage: React.FC = () => {
                 />
               </Col>
             </Row>
+            <Divider />
+            <Row gutter={16}>
+              <Col span={8}>
+                <Statistic
+                  title="盘中整体涨跌"
+                  value={(() => {
+                    const totalPrev = positions.reduce(
+                      (sum, p) => sum + (p.prev_close_price || 0) * (p.quantity || 0),
+                      0
+                    );
+                    const totalCurr = positions.reduce(
+                      (sum, p) => sum + (p.market_value || 0),
+                      0
+                    );
+                    if (totalPrev <= 0) return 0;
+                    return Number((((totalCurr - totalPrev) / totalPrev) * 100).toFixed(2));
+                  })()}
+                  suffix="%"
+                  precision={2}
+                  valueStyle={{
+                    color: (() => {
+                      const totalPrev = positions.reduce(
+                        (sum, p) => sum + (p.prev_close_price || 0) * (p.quantity || 0),
+                        0
+                      );
+                      const totalCurr = positions.reduce(
+                        (sum, p) => sum + (p.market_value || 0),
+                        0
+                      );
+                      if (totalPrev <= 0) return '#666';
+                      const change = (totalCurr - totalPrev) / totalPrev;
+                      return change > 0 ? '#f5222d' : change < 0 ? '#52c41a' : '#666';
+                    })(),
+                  }}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic
+                  title="停牌持仓折算"
+                  value={positions
+                    .filter((p) => p.is_suspended)
+                    .reduce((sum, p) => sum + (p.disposable_value || 0), 0)}
+                  prefix="¥"
+                  precision={0}
+                  valueStyle={{ color: '#fa8c16' }}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic
+                  title="待确认追加"
+                  value={additions.filter((a) => a.status === 'pending').length}
+                  suffix="笔"
+                  valueStyle={{
+                    color: additions.some((a) => a.status === 'pending') ? '#faad14' : '#52c41a',
+                  }}
+                />
+              </Col>
+            </Row>
+            {additions.some((a) => a.status === 'pending') && (
+              <div style={{ marginTop: 8, color: '#faad14', fontSize: 12 }}>
+                <WarningOutlined /> 存在待确认的追加担保品，强平操作将受限，须先确认入账
+              </div>
+            )}
           </Card>
         </Col>
       </Row>

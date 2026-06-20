@@ -1,5 +1,5 @@
 import { api } from './client';
-import { ForcedLiquidation, CollateralPosition, LiquidationStatus } from '../types';
+import { ForcedLiquidation, CollateralPosition, LiquidationStatus, LiquidationExecution } from '../types';
 
 export const tradingApi = {
   getLiquidatablePositions: (customerId: string) =>
@@ -42,4 +42,36 @@ export const tradingApi = {
     liquidationId: string,
     data: { new_trigger_time: string }
   ) => api.put<ForcedLiquidation>(`/trading/liquidations/${liquidationId}/trigger-time`, data),
+
+  batchExecute: (
+    liquidationId: string,
+    data: {
+      position_id: string;
+      quantity: number;
+      fill_price?: number;
+      notes?: string;
+    }
+  ) =>
+    api.post<ForcedLiquidation>(
+      `/trading/liquidations/${liquidationId}/batch-execute`,
+      data
+    ),
+
+  cancelOrder: (
+    liquidationId: string,
+    data: {
+      position_id: string;
+      cancellation_reason: string;
+      notes?: string;
+    }
+  ) =>
+    api.post<ForcedLiquidation>(
+      `/trading/liquidations/${liquidationId}/cancel-order`,
+      data
+    ),
+
+  getExecutions: (liquidationId: string) =>
+    api.get<LiquidationExecution[]>(
+      `/trading/liquidations/${liquidationId}/executions`
+    ),
 };

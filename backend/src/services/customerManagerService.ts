@@ -13,6 +13,33 @@ export const createCommunication = async (
   nextFollowUpAt?: string,
   ipAddress?: string
 ): Promise<Communication> => {
+  if (warningId) {
+    const warningResult = await query(
+      `SELECT status FROM risk_warnings WHERE warning_id = $1`,
+      [warningId]
+    );
+
+    if (warningResult.rows.length === 0) {
+      throw new Error('预警不存在');
+    }
+
+    const warningStatus = warningResult.rows[0].status;
+
+    if (warningStatus === 'liquidated') {
+      throw new Error('该预警已强平完成，沟通痕迹已锁定，不能新增沟通记录');
+    }
+
+    const lockedLiquidation = await query(
+      `SELECT COUNT(*) FROM forced_liquidations
+       WHERE warning_id = $1 AND is_disposal_locked = true`,
+      [warningId]
+    );
+
+    if (parseInt(lockedLiquidation.rows[0].count) > 0) {
+      throw new Error('强平处置流水已锁定，沟通痕迹已锁定，不能新增沟通记录');
+    }
+  }
+
   const communicationId = uuidv4();
   const result = await query(
     `INSERT INTO communications (communication_id, customer_id, warning_id, manager_id,

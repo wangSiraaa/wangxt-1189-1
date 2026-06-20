@@ -41,6 +41,7 @@ export interface Security {
   suspension_start_date?: Date;
   disposable_ratio: number;
   current_price: number;
+  prev_close_price: number;
   created_at: Date;
   updated_at: Date;
 }
@@ -51,6 +52,8 @@ export interface CollateralPosition {
   security_id: string;
   quantity: number;
   market_value: number;
+  disposable_value?: number;
+  intraday_change?: number;
   last_calculated_at: Date;
   created_at: Date;
   updated_at: Date;
@@ -123,6 +126,7 @@ export interface ForcedLiquidation {
   trigger_maintenance_ratio: number;
   trigger_time: Date;
   is_trigger_time_locked: boolean;
+  is_disposal_locked: boolean;
   status: LiquidationStatus;
   positions_to_liquidate?: any;
   executed_by?: string;
@@ -136,6 +140,27 @@ export interface ForcedLiquidation {
   updated_at: Date;
 }
 
+export type ExecutionType = 'fill' | 'cancel';
+
+export interface LiquidationExecution {
+  execution_id: string;
+  liquidation_id: string;
+  execution_type: ExecutionType;
+  position_id?: string;
+  security_id?: string;
+  security_code?: string;
+  security_name?: string;
+  planned_quantity?: number;
+  quantity: number;
+  fill_price?: number;
+  fill_amount?: number;
+  executed_by?: string;
+  executed_at: Date;
+  cancellation_reason?: string;
+  notes?: string;
+  created_at: Date;
+}
+
 export interface RiskHistory {
   history_id: string;
   customer_id: string;
@@ -143,6 +168,7 @@ export interface RiskHistory {
   total_collateral_value: number;
   total_debt: number;
   warning_level: WarningLevel;
+  intraday_change: number;
   calculated_at: Date;
 }
 

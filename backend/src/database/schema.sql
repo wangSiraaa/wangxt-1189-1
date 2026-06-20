@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS securities (
     suspension_start_date TIMESTAMP,
     disposable_ratio NUMERIC(10, 4) DEFAULT 1.0,
     current_price NUMERIC(18, 4) NOT NULL DEFAULT 0,
+    prev_close_price NUMERIC(18, 4) NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -111,6 +112,7 @@ CREATE TABLE IF NOT EXISTS forced_liquidations (
     trigger_maintenance_ratio NUMERIC(10, 4) NOT NULL,
     trigger_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_trigger_time_locked BOOLEAN DEFAULT false,
+    is_disposal_locked BOOLEAN DEFAULT false,
     status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled')),
     positions_to_liquidate JSONB,
     executed_by UUID REFERENCES users(user_id),
@@ -124,6 +126,25 @@ CREATE TABLE IF NOT EXISTS forced_liquidations (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS liquidation_executions (
+    execution_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    liquidation_id UUID REFERENCES forced_liquidations(liquidation_id) NOT NULL,
+    execution_type VARCHAR(20) NOT NULL CHECK (execution_type IN ('fill', 'cancel')),
+    position_id UUID,
+    security_id UUID REFERENCES securities(security_id),
+    security_code VARCHAR(20),
+    security_name VARCHAR(255),
+    planned_quantity NUMERIC(18, 4),
+    quantity NUMERIC(18, 4) NOT NULL,
+    fill_price NUMERIC(18, 4),
+    fill_amount NUMERIC(18, 4),
+    executed_by UUID REFERENCES users(user_id),
+    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    cancellation_reason TEXT,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS risk_history (
     history_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     customer_id UUID REFERENCES customers(customer_id) NOT NULL,
@@ -131,6 +152,7 @@ CREATE TABLE IF NOT EXISTS risk_history (
     total_collateral_value NUMERIC(18, 4) NOT NULL,
     total_debt NUMERIC(18, 4) NOT NULL,
     warning_level VARCHAR(20) NOT NULL,
+    intraday_change NUMERIC(10, 4) DEFAULT 0,
     calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
