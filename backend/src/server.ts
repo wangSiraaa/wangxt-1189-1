@@ -58,7 +58,7 @@ app.get('/api/health', async (req, res) => {
         status: 'healthy',
         timestamp: new Date().toISOString(),
         database: dbResult.rows[0].health === 1 ? 'connected' : 'error',
-        port: PORT,
+        port: parseInt(String(PORT)),
       },
     });
   } catch (error) {

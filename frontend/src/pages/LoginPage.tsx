@@ -11,9 +11,8 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../api/auth';
-import { commonApi } from '../api/common';
 import { useAppStore } from '../store/appStore';
-import { User, UserRole } from '../types';
+import { UserRole } from '../types';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -49,132 +48,54 @@ const LoginPage: React.FC = () => {
     const hide = message.loading('正在登录验证...', 0);
 
     try {
-      try {
-        const result = await authApi.login(
-          {
-            username: values.username.trim(),
-            password: values.password,
-            role: values.role,
-          },
-          { skipErrorMessage: true }
-        );
-
-        if (result?.user) {
-          hide();
-          setCurrentUser(result.user);
-          localStorage.setItem('auth_token', result.token || '');
-          message.success({
-            content: `欢迎回来，${result.user.full_name}！`,
-            icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
-            duration: 2,
-          });
-          navigate('/dashboard', { replace: true });
-          return;
-        }
-      } catch (loginError: any) {
-        const status = loginError?.status;
-        if (status === 401 || status === 403) {
-          hide();
-          message.error(loginError?.message || '用户名或密码错误');
-          return;
-        }
-        console.warn('API login failed (non-credential error), trying fallback:', loginError);
-      }
-
-      try {
-        const users = await commonApi.getUsers(undefined, { skipErrorMessage: true });
-        const user = users.find(
-          (u: User) => u.username === values.username.trim() && u.role === values.role
-        );
-
-        if (user) {
-          const expectedPassword = values.username.endsWith('01')
-            ? `${values.username.slice(0, -2)}123`
-            : values.role === 'admin'
-            ? 'admin123'
-            : `${values.username}123`;
-
-          if (values.password === expectedPassword) {
-            hide();
-            setCurrentUser(user);
-            message.success({
-              content: `登录成功（演示模式）- 欢迎，${user.full_name}！`,
-              icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
-              duration: 2,
-            });
-            navigate('/dashboard', { replace: true });
-            return;
-          } else {
-            hide();
-            message.error('密码错误，演示账号密码为：用户名+123');
-            return;
-          }
-        } else {
-          hide();
-          message.error('用户名与角色不匹配，请检查后重试');
-          return;
-        }
-      } catch (fallbackError) {
-        console.warn('Fallback getUsers failed:', fallbackError);
-      }
-
-      const mockUser = getMockUser(values.username, values.role);
-      if (mockUser) {
+      if (!apiHealth?.ok) {
         hide();
-        setCurrentUser(mockUser);
-        message.warning('后端不可用，使用本地演示模式登录');
+        message.error('后端服务不可用，请先启动后端服务器 (端口: 19489) 后再登录');
+        return;
+      }
+
+      const result = await authApi.login(
+        {
+          username: values.username.trim(),
+          password: values.password,
+          role: values.role,
+        },
+        { skipErrorMessage: true }
+      );
+
+      if (result?.user) {
+        hide();
+        setCurrentUser(result.user);
+        localStorage.setItem('auth_token', result.token || '');
+        message.success({
+          content: `欢迎回来，${result.user.full_name}！`,
+          icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
+          duration: 2,
+        });
         navigate('/dashboard', { replace: true });
         return;
       }
 
       hide();
-      message.error('登录失败，请检查账号密码或启动后端服务');
+      message.error('登录失败：未获取到用户信息');
     } catch (error: any) {
       hide();
-      console.error('Login error:', error);
-      message.error(error?.message || '登录失败，请检查网络连接后重试');
+      const status = error?.status;
+      if (status === 401) {
+        message.error('用户名或密码错误，请检查后重试');
+      } else if (status === 403) {
+        message.error(error?.message || '该用户不具有所选角色权限');
+      } else if (status === 400) {
+        message.error(error?.message || '请求参数错误');
+      } else if (!status) {
+        message.error('无法连接后端服务，请检查网络或后端是否已启动 (端口: 19489)');
+      } else {
+        console.error('Login error:', error);
+        message.error(error?.message || '登录失败，请稍后重试');
+      }
     } finally {
       setLoading(false);
     }
-  };
-
-  const getMockUser = (username: string, role: UserRole): User | null => {
-    const mockUsers: Record<string, User> = {
-      risk01: {
-        user_id: 'mock-risk-001',
-        username: 'risk01',
-        full_name: '张风控',
-        role: 'risk_control',
-        created_at: new Date().toISOString(),
-      },
-      manager01: {
-        user_id: 'mock-manager-001',
-        username: 'manager01',
-        full_name: '李经理',
-        role: 'customer_manager',
-        created_at: new Date().toISOString(),
-      },
-      trading01: {
-        user_id: 'mock-trading-001',
-        username: 'trading01',
-        full_name: '王交易',
-        role: 'trading_ops',
-        created_at: new Date().toISOString(),
-      },
-      admin: {
-        user_id: 'mock-admin-001',
-        username: 'admin',
-        full_name: '系统管理员',
-        role: 'admin',
-        created_at: new Date().toISOString(),
-      },
-    };
-
-    const user = mockUsers[username];
-    if (user && user.role === role) {
-      return user;
-    }
-    return null;
   };
 
   const demoAccounts = [

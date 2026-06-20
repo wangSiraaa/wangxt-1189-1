@@ -45,9 +45,12 @@ router.get('/customers', async (req, res) => {
     params.push(value.page_size, offset);
 
     const result = await query(
-      `SELECT c.*, u.full_name as manager_name
+      `SELECT c.*, u.full_name as manager_name,
+              ma.total_collateral_value, ma.total_debt, ma.maintenance_ratio,
+              ma.warning_line, ma.liquidation_line
        FROM customers c
        LEFT JOIN users u ON c.manager_id = u.user_id
+       LEFT JOIN margin_accounts ma ON c.customer_id = ma.customer_id
        ${whereClause}
        ORDER BY c.created_at DESC
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
